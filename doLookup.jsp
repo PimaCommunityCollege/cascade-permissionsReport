@@ -1,26 +1,17 @@
 <%@ taglib uri="http://java.sun.com/jstl/core" prefix="c" %>
 <%@ taglib uri="http://java.sun.com/jstl/sql" prefix="sql" %>
 
-<%
-	String username = request.getParameter("username");
-	if (username == null) username = "";
-	username = username.replaceAll("[^\\w]", "");	// nuke everything but letters, numbers, underscore.
-	//out.print("username: " + username);
-	if (username.length() < 1 || username.length() > 50)	// col is varchar(250), but rly?
-	{
-		response.sendRedirect("index.jsp");
-		return;
-	}
-	pageContext.setAttribute("username", username);
-%>	
-
 
 <sql:query var="userRS" dataSource="jdbc/CascadeDS">
-select fce.assetType, fce.cachepath , site.name from cxml_foldercontent fce, cxml_aclentry acl, cxml_site site where acl.userPermissionsLevel = 2 and acl.userName = '<c:out value="${username}" />' and fce.permissionsId = acl.permissionsId and site.id = fce.siteId group by fce.cachepath order by site.name, fce.cachepath
+	select fce.assetType, fce.cachepath , site.name from cxml_foldercontent fce, cxml_aclentry acl, cxml_site site where acl.userPermissionsLevel = 2 and acl.userName = ? and fce.permissionsId = acl.permissionsId and site.id = fce.siteId group by fce.cachepath order by site.name, fce.cachepath
+
+	<sql:param value="${param.username}" />
 </sql:query>
 
 <sql:query var="groupRS" dataSource="jdbc/CascadeDS">
-	select groupName from cxml_group_membership where username = '<c:out value="${username}" />'
+	select groupName from cxml_group_membership where username = ?
+
+	<sql:param value="${param.username}" />
 </sql:query>
 
 <html>
@@ -36,7 +27,7 @@ select fce.assetType, fce.cachepath , site.name from cxml_foldercontent fce, cxm
 				The user might have the permissions assigned directly their user account,
 				or the permission could be attached to a group that the user is a member of.
 			</p>
-			<p>Looking up permissions for user: <strong><c:out value="${username}" /></strong></p>
+			<p>Looking up permissions for user: <strong><c:out value="${param.username}" /></strong></p>
 			<p><a href="index.jsp">New lookup</a></p>
 		</div>
 
@@ -87,7 +78,9 @@ select fce.assetType, fce.cachepath , site.name from cxml_foldercontent fce, cxm
 			<c:otherwise>
 				<c:forEach var="group" items="${groupRS.rows}">
 					<sql:query var="rs" dataSource="jdbc/CascadeDS">						
-						select fce.assetType, fce.cachepath , site.name from cxml_foldercontent fce, cxml_aclentry acl, cxml_site site where acl.groupPermissionsLevel = 2 and acl.groupName = '<c:out value="${group.groupName}" />' and fce.permissionsId = acl.permissionsId and site.id = fce.siteId group by fce.cachepath order by site.name, fce.cachepath
+						select fce.assetType, fce.cachepath , site.name from cxml_foldercontent fce, cxml_aclentry acl, cxml_site site where acl.groupPermissionsLevel = 2 and acl.groupName = ? and fce.permissionsId = acl.permissionsId and site.id = fce.siteId group by fce.cachepath order by site.name, fce.cachepath
+
+						<sql:param value="${group.groupName}" />
 					</sql:query>
 					<div>
 						<h3>Group name: <c:out value="${group.groupName}" /></h3>
@@ -122,12 +115,6 @@ select fce.assetType, fce.cachepath , site.name from cxml_foldercontent fce, cxm
 				</c:forEach>
 			</c:otherwise>
 		</c:choose>
-<!--
-		<hr />
-		<c:forEach var="col" items="${userRS.columnNames}">
-			col: <c:out value="${col}" /><br />
-		</c:forEach>
--->
 	</body>
 </html>
 
